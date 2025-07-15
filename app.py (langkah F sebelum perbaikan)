@@ -1,0 +1,98 @@
+# VERSI BENCANA KEAMANAN
+# Skrip ini sengaja diisi dengan berbagai jenis kerentanan parah
+# untuk demonstrasi kemampuan deteksi SonarQube secara maksimal.
+
+import sys
+import os
+import hashlib
+import sqlite3
+import subprocess # Untuk Command Injection
+import pickle     # Untuk Deserialisasi yang tidak aman
+
+# --- Kerentanan 1: Kredensial di mana-mana (Hard-coded Credentials) ---
+# Tidak hanya satu, tapi beberapa kredensial penting ditulis langsung.
+DB_PASSWORD_PROD = "PasswordSuperRahasia123!"
+DB_PASSWORD_DEV = "admin123"
+API_SECRET_KEY = "kunci-rahasia-milik-perusahaan-jangan-disebar"
+FTP_USER = "ftp_user"
+FTP_PASS = "ftp_password_123"
+
+# --- Kerentanan 2: Penggunaan Algoritma Hashing yang Sangat Lemah ---
+# Menggunakan MD5 dan SHA1 yang sudah tidak boleh dipakai untuk keamanan.
+def create_very_weak_hashes(password_text):
+    """Fungsi ini menggunakan MD5 dan SHA1, keduanya tidak aman."""
+    print(f"Membuat hash MD5 & SHA1 untuk: {password_text}")
+    
+    # SonarQube akan menandai keduanya sebagai kerentanan.
+    md5_hash = hashlib.md5(password_text.encode()).hexdigest()
+    sha1_hash = hashlib.sha1(password_text.encode()).hexdigest()
+    
+    print(f"Hasil MD5: {md5_hash}")
+    print(f"Hasil SHA1: {sha1_hash}")
+    return md5_hash, sha1_hash
+
+# --- Kerentanan 3: Injeksi SQL (SQL Injection) ---
+# Celah keamanan klasik di mana input pengguna bisa mengubah query database.
+def search_product_dangerously(product_name):
+    """Fungsi ini sangat rentan terhadap serangan SQL Injection."""
+    conn = sqlite3.connect(':memory:')
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE products (id INT, name TEXT, price INT)")
+    
+    # BAGIAN SANGAT BERBAHAYA: Input digabung langsung ke query.
+    query = f"SELECT * FROM products WHERE name = '{product_name}'"
+    print(f"Menjalankan query berbahaya: {query}")
+    cursor.execute(query)
+    print(f"Hasil: {cursor.fetchall()}")
+    conn.close()
+
+# --- Kerentanan 4: Injeksi Perintah Sistem (Command Injection) ---
+# Celah fatal di mana input pengguna bisa menjalankan perintah di server.
+def check_file_status(filename):
+    """Fungsi ini bisa disalahgunakan untuk menjalankan perintah OS apa pun."""
+    # BAGIAN FATAL: Input pengguna menjadi bagian dari perintah sistem.
+    # Penyerang bisa memasukkan "; ls -la" untuk melihat semua file.
+    command = "ls -l " + filename
+    print(f"Menjalankan perintah sistem: {command}")
+    # Penggunaan shell=True dengan input dari luar sangat berbahaya.
+    subprocess.run(command, shell=True, check=True)
+
+# --- Kerentanan 5: Penggunaan 'eval' yang Berbahaya ---
+# 'eval' mengeksekusi string sebagai kode Python, ini sangat tidak aman.
+def calculate_expression(expression_string):
+    """Mengevaluasi ekspresi matematika dari string menggunakan eval()."""
+    print(f"Mengevaluasi: {expression_string}")
+    # Penyerang bisa memasukkan `__import__('os').system('rm -rf /')`
+    result = eval(expression_string)
+    print(f"Hasil eval: {result}")
+    return result
+
+# --- Fungsi Utama untuk Menjalankan Semua Bencana ---
+def main():
+    print("--- MENJALANKAN SKRIP VERSI BENCANA KEAMANAN ---")
+    
+    create_very_weak_hashes("kataSandiLemah")
+    print("-" * 30)
+    
+    # Penggunaan normal
+    search_product_dangerously("Buku")
+    # Serangan SQL Injection
+    search_product_dangerously("' OR '1'='1'")
+    print("-" * 30)
+
+    # Penggunaan normal
+    check_file_status("app.py")
+    # Serangan Command Injection (akan menampilkan semua file di direktori)
+    # check_file_status("app.py; ls -la") 
+    print("-" * 30)
+
+    # Penggunaan normal
+    calculate_expression("2 + 2 * 10")
+    # Serangan menggunakan eval (akan menjalankan perintah 'ls' di terminal)
+    # calculate_expression("__import__('os').system('ls')")
+    print("-" * 30)
+
+    print("--- SEMUA KERENTANAN TELAH DIJALANKAN ---")
+
+if __name__ == "__main__":
+    main()

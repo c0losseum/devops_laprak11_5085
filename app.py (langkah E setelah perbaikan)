@@ -1,0 +1,56 @@
+import sys
+import os          
+import bcrypt      
+import sqlite3
+
+API_KEY = os.getenv("API_KEY", "default_api_key_for_dev")
+DB_PASSWORD = os.getenv("DB_PASS", "default_pass_for_dev")
+
+def connect_to_services():
+    """Fungsi ini sekarang menggunakan kredensial dengan cara yang lebih aman."""
+    print(f"Mencoba menggunakan API Key dari environment.")
+    print(f"Mencoba terhubung ke DB dengan password dari environment.")
+
+def create_strong_hash(password_text):
+    """Fungsi ini menggunakan bcrypt untuk hashing password yang aman."""
+    print(f"Membuat hash bcrypt yang kuat untuk: {password_text}")
+    password_bytes = password_text.encode('utf-8')
+    strong_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    print(f"Hasil hash bcrypt: {strong_hash.decode()}")
+    return strong_hash
+
+
+def search_user_securely(username_input):
+    """Fungsi ini sekarang aman dari serangan SQL Injection."""
+    conn = sqlite3.connect(':memory:')
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE users (id INT, name TEXT)")
+    cursor.execute("INSERT INTO users VALUES (1, 'admin')")
+
+    query = "SELECT * FROM users WHERE name = ?"
+    print(f"Menjalankan query yang aman untuk mencari: {username_input}")
+
+    cursor.execute(query, (username_input,))
+    result = cursor.fetchall()
+    print(f"Hasil pencarian untuk '{username_input}': {result}")
+    
+    conn.close()
+
+def main():
+    """Fungsi utama untuk memanggil semua fungsi yang sudah diperbaiki."""
+    print("--- Menjalankan Aplikasi Latihan Keamanan SonarQube (Versi Perbaikan) ---")
+    
+    connect_to_services()
+    print("-" * 20)
+    
+    create_strong_hash("password123")
+    print("-" * 20)
+
+    search_user_securely("admin")
+    search_user_securely("' OR '1'='1")
+    print("-" * 20)
+    
+    print("--- Aplikasi Selesai ---")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,112 @@
+# app.py
+# VERSI PERBAIKAN KEAMANAN LENGKAP
+# Skrip ini berisi perbaikan untuk semua kerentanan yang ada sebelumnya.
+
+import sys
+import os
+import sqlite3
+import subprocess
+# Library yang aman untuk hashing password, perlu di-install: pip install bcrypt
+import bcrypt
+# Library yang aman untuk evaluasi ekspresi matematika, perlu di-install: pip install asteval
+from asteval import Interpreter
+
+# --- PERBAIKAN 1: Kredensial diambil dari Environment Variables ---
+# Praktik terbaik adalah tidak menulis kredensial di kode.
+# Kita mengambilnya dari lingkungan server, dengan nilai default jika tidak ditemukan.
+DB_PASSWORD_PROD = os.getenv("DB_PASSWORD_PROD", "default_prod_pass")
+DB_PASSWORD_DEV = os.getenv("DB_PASSWORD_DEV", "default_dev_pass")
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "default_api_key")
+FTP_USER = os.getenv("FTP_USER", "default_ftp_user")
+FTP_PASS = os.getenv("FTP_PASS", "default_ftp_pass")
+
+# --- PERBAIKAN 2: Menggunakan Algoritma Hashing yang Kuat (bcrypt) ---
+# MD5 dan SHA1 diganti dengan bcrypt yang jauh lebih aman dan modern.
+def create_strong_hash(password_text):
+    """Fungsi ini menggunakan bcrypt untuk hashing password yang aman."""
+    print(f"Membuat hash bcrypt yang kuat untuk: {password_text}")
+    password_bytes = password_text.encode('utf-8')
+    # bcrypt.gensalt() secara otomatis membuat proses hashing sangat aman.
+    strong_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    print(f"Hasil hash bcrypt: {strong_hash.decode()}")
+    return strong_hash
+
+# --- PERBAIKAN 3: Menggunakan Parameterized Queries untuk Mencegah SQL Injection ---
+# Input pengguna tidak lagi digabung langsung ke dalam query.
+def search_product_securely(product_name):
+    """Fungsi ini sekarang aman dari serangan SQL Injection."""
+    conn = sqlite3.connect(':memory:')
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE products (id INT, name TEXT, price INT)")
+    
+    # BAGIAN AMAN: Input pengguna dilewatkan secara terpisah menggunakan placeholder '?'.
+    # Database akan memperlakukan input sebagai data murni, bukan perintah.
+    query = "SELECT * FROM products WHERE name = ?"
+    print(f"Menjalankan query yang aman untuk mencari: {product_name}")
+    
+    # Input dilewatkan sebagai tuple di argumen kedua.
+    cursor.execute(query, (product_name,))
+    print(f"Hasil: {cursor.fetchall()}")
+    conn.close()
+
+# --- PERBAIKAN 4: Mencegah Command Injection dengan Argumen Terpisah ---
+# Perintah dan argumennya dipisahkan dalam sebuah list untuk mencegah eksekusi kode arbitrer.
+def check_file_status_securely(filename):
+    """Fungsi ini sekarang lebih aman dari Command Injection."""
+    # Memvalidasi input untuk memastikan tidak ada karakter berbahaya (opsional tapi bagus)
+    if not filename.isalnum() and '.' not in filename:
+        print(f"Error: Nama file tidak valid: {filename}")
+        return
+
+    print(f"Menjalankan perintah sistem secara aman untuk: {filename}")
+    # Perintah dan argumen dipisah dalam list. shell=False adalah default dan lebih aman.
+    try:
+        subprocess.run(["ls", "-l", filename], check=True)
+    except FileNotFoundError:
+        print(f"File tidak ditemukan: {filename}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error saat menjalankan perintah: {e}")
+
+# --- PERBAIKAN 5: Menggunakan Interpreter Aman sebagai Pengganti 'eval' ---
+# Menggunakan library 'asteval' yang dirancang untuk mengevaluasi ekspresi matematika dengan aman.
+def calculate_expression_safely(expression_string):
+    """Mengevaluasi ekspresi matematika dengan aman menggunakan asteval."""
+    print(f"Mengevaluasi dengan aman: {expression_string}")
+    aeval = Interpreter() # Membuat interpreter yang aman
+    # aeval.eval() hanya akan mengeksekusi operasi matematika, bukan perintah sistem.
+    result = aeval.eval(expression_string)
+    print(f"Hasil aman: {result}")
+    return result
+
+# --- Fungsi Utama untuk Menjalankan Semua Fungsi yang Sudah Diperbaiki ---
+def main():
+    print("--- MENJALANKAN SKRIP VERSI PERBAIKAN KEAMANAN ---")
+    
+    create_strong_hash("kataSandiKuatSekali123")
+    print("-" * 30)
+    
+    # Penggunaan normal
+    search_product_securely("Buku")
+    # Serangan SQL Injection (sekarang akan gagal dan tidak menemukan apa-apa)
+    search_product_securely("' OR '1'='1'")
+    print("-" * 30)
+
+    # Penggunaan normal
+    check_file_status_securely("app.py")
+    # Serangan Command Injection (sekarang akan gagal karena input tidak valid)
+    check_file_status_securely("app.py; ls -la")
+    print("-" * 30)
+
+    # Penggunaan normal
+    calculate_expression_safely("2 + 2 * 10")
+    # Serangan menggunakan eval (sekarang akan gagal karena asteval tidak mengenali perintah)
+    try:
+        calculate_expression_safely("__import__('os').system('ls')")
+    except Exception as e:
+        print(f"Gagal mengevaluasi ekspresi berbahaya: {e}")
+    print("-" * 30)
+
+    print("--- SEMUA FUNGSI AMAN TELAH DIJALANKAN ---")
+
+if __name__ == "__main__":
+    main()

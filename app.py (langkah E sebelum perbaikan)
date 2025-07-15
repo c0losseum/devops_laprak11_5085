@@ -1,0 +1,59 @@
+import sys
+import hashlib
+import sqlite3
+
+API_KEY = "kunci_rahasia_super_penting_12345"
+DB_PASSWORD = "SuperSecretPassword123"
+
+def connect_to_services():
+    """Fungsi yang menggunakan kredensial yang ditulis langsung."""
+    print(f"Mencoba menggunakan API Key: {API_KEY}")
+    print(f"Mencoba terhubung ke DB dengan password: {DB_PASSWORD}")
+
+def create_weak_hash(password_text):
+    """Fungsi ini secara sengaja menggunakan MD5 yang tidak aman."""
+    print(f"Membuat hash MD5 untuk: {password_text}")
+
+    weak_hash = hashlib.md5(password_text.encode()).hexdigest()
+    print(f"Hasil hash MD5: {weak_hash}")
+    return weak_hash
+
+def search_user(username_input):
+    """Fungsi ini sangat rentan terhadap serangan SQL Injection."""
+
+    conn = sqlite3.connect(':memory:')
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE users (id INT, name TEXT)")
+    cursor.execute("INSERT INTO users VALUES (1, 'admin')")
+
+    query = f"SELECT * FROM users WHERE name = '{username_input}'"
+    print(f"Menjalankan query berbahaya: {query}")
+    
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        print(f"Hasil pencarian untuk '{username_input}': {result}")
+    except sqlite3.Error as e:
+        print(f"Terjadi error SQL: {e}")
+    
+    conn.close()
+
+
+def main():
+    """Fungsi utama untuk memanggil semua fungsi yang memiliki kerentanan."""
+    print("--- Menjalankan Aplikasi Latihan Keamanan SonarQube (Versi Agresif) ---")
+    
+    connect_to_services()
+    print("-" * 20)
+
+    create_weak_hash("password123")
+    print("-" * 20)
+
+    search_user("admin")
+    print("-" * 20)
+
+    print("--- Aplikasi Selesai ---")
+
+
+if __name__ == "__main__":
+    main()
